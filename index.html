@@ -1,0 +1,55 @@
+<!DOCTYPE html lang="en">
+<html>
+<head>
+<title>Unofficial FreeBSD pkg mirror by Yandex Cloud BareMetal</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+</head>
+<body>
+<h1>Unofficial FreeBSD.org pkg mirror hosted by <a href="https://yandex.cloud/ru/services/baremetal">Yandex Cloud
+BareMetal</a></h1>
+<p>HTTPS is not supported (anyway, we're are not an official mirror), so
+<strong>keep (make sure) <code>signature_type</code> and <code>fingerprints</code> attributes
+set to correct values when using this mirror.</strong></p>
+<p>All architectures are mirrored. To use this mirror, one can use a custom <code>/usr/local/etc/pkg/repos/FreeBSD.conf</code>
+pkg configuration file:<br>
+<pre>
+FreeBSD-ports: { enabled: no }
+FreeBSD-ports-kmods: { enabled: no }
+FreeBSD-base: { enabled: no }
+
+ya-FreeBSD-ports: {
+  url: "http://pkg.freebsd.yaoff.net/${ABI}/quarterly",
+  mirror_type: "http",
+  signature_type: "fingerprints",
+  fingerprints: "/usr/share/keys/pkg",
+  enabled: yes
+}
+ya-FreeBSD-ports-kmods: {
+  url: "http://pkg.freebsd.yaoff.net/${ABI}/kmods_quarterly_${VERSION_MINOR}",
+  mirror_type: "http",
+  signature_type: "fingerprints",
+  fingerprints: "/usr/share/keys/pkg",
+  enabled: yes
+}
+ya-FreeBSD-base: {
+  url: "http://pkg.freebsd.yaoff.net/${ABI}/base_release_${VERSION_MINOR}",
+  mirror_type: "http",
+  signature_type: "fingerprints",
+  fingerprints: "/usr/share/keys/pkgbase-${VERSION_MAJOR}",
+  enabled: no
+}
+</pre></p>
+<p>There are some logs per each update cycle:
+<ul>
+  <li><a href="/logs/wget-repo-mirror.txt">wget repo metadata update</a></li>
+  <li><a href="/logs/batch-13.txt">RELENG_13 update status</a></li>
+  <li><a href="/logs/batch-14.txt">RELENG_14 update status</a></li>
+  <li><a href="/logs/batch-15.txt">RELENG_15 update status</a></li>
+  <li><a href="/logs/batch-16.txt">RELENG_16 update status</a></li>
+</ul>
+Each RELENG_* log file contains a list of repositories that were not updated
+due to an error.
+</p>
+<br><br>
+<p><a href="https://www.FreeBSD.org/">FreeBSD.org home</a></p>
+</body></html>
