@@ -26,7 +26,8 @@ update_skel()
 
 mirror_releng()
 {
-	echo -e "Start mirror releng $1 sync @ ${TIMESTAMP}"
+	echo "Start mirror releng $1 sync @ ${DATETIME} (${TIMESTAMP})"
+	echo "List of repositories that were not updated due to an error can be found at the end of this log."
 
 	fail=""
 	for ABI in `find pkg.freebsd.org -type d -name "*:$1:*" -depth 1`; do
@@ -62,6 +63,7 @@ mirror_releng()
 
 
 TIMESTAMP=$(date -j '+%s')
+DATETIME=$(date)
 LOGFILE="logs/batch.txt"
 WGETLOGFILE="logs/wget-repo-mirror.txt"
 
