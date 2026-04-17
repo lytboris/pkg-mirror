@@ -8,7 +8,7 @@ LOGSDST="/${WWWROOT}/pkg.freebsd.org/logs"
 update_skel()
 {
 	echo "Updating skel with wget";
-	wget -o "$1" -e robots=off -R 'FreeBSD*.pkg,*.html*,*=*' -r -l inf -E -np 'https://pkg.freebsd.org/'
+	wget -o "$1" -e robots=off -R 'FreeBSD*.pkg,*=*,Freebsd*.html' -r -l inf -E -np 'https://pkg.freebsd.org/'
 	WGETEXITCODE=$?
 	echo -e "=====================================\n\n"
 	set -e
