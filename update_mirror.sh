@@ -97,11 +97,6 @@ cleanup_repo()
 
 	echo -e "\n\n!!! Cleanup is needed: current_files=${CURRENT_NFILES}, target_files=${TARGET_NFILES}\n";
 
-	if ! lockf -s -t 0 9; then
-		echo "Failed to obtain cleanup lock, another cleanup is being performed"
-		return 0;
-	fi
-
 	CDIR=$(pwd)
 	FILELIST=$(mktemp)
 	cd "$1"
@@ -111,7 +106,7 @@ cleanup_repo()
 	NREPODIR="$1/.newrepo"
 	mkdir -p "${NREPODIR}"
 	tar -C "$2" -cf - . | tar -C ${NREPODIR} -xpf -
-	pkg fetch -Uqays -o ${NREPODIR} -r "repo"
+	lockf -k /tmp/recreate-all.lock pkg fetch -Uqays -o ${NREPODIR} -r "repo"
 
 	# now scan new repo for obsolete files located in the real repo
 	for item in `cat "${FILELIST}"`; do
@@ -124,6 +119,6 @@ cleanup_repo()
 	return 0;
 }
 
-( cleanup_repo "${REPOLOCALROOT}" "${SKELREPODIR}" ) 9>/tmp/recreate-all.lock
+cleanup_repo "${REPOLOCALROOT}" "${SKELREPODIR}"
 
 exit 0;

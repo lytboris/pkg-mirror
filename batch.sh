@@ -109,7 +109,7 @@ esac
 
 
 for releng in `find pkg.freebsd.org -type d -depth 1 | cut -f 2 -d: | sort -u`; do
-	screen -d -m lockf -t0 "/tmp/pkg-sync-${releng}.lock" sh "$0" "${releng}"
+	screen -d -m lockf -k -t0 "/tmp/pkg-sync-${releng}.lock" sh "$0" "${releng}"
 done
 cp "${LOGFILE}" "${LOGSDST}"
 exit 0;
