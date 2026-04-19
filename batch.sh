@@ -8,8 +8,11 @@ LOGSDST="/${WWWROOT}/pkg.freebsd.org/logs"
 update_skel()
 {
 	echo "Updating skel with wget";
-	wget -o "$1" -e robots=off -R 'FreeBSD*.pkg,*=*,Freebsd*.html' -r -l inf -E -np 'https://pkg.freebsd.org/'
+	mkdir -p skel;
+	cd skel;
+	wget -o "../$1" -e robots=off -R 'FreeBSD*.pkg,*=*,Freebsd*.html' -r -l inf -E -np 'https://pkg.freebsd.org/'
 	WGETEXITCODE=$?
+	cd ../;
 	echo -e "=====================================\n\n"
 	set -e
 	case "${WGETEXITCODE}" in
@@ -21,23 +24,26 @@ update_skel()
 			echo "wget stage failure, exit code $?, please investigate. Log is saved to ${LOGFILE}"
 			exit ${WGETEXITCODE}
 	esac
+	tar -C skel -cf - . | tar -xpf -
 }
 
 
 mirror_releng()
 {
+	set -e
 	echo "Start mirror releng $1 sync @ ${DATETIME} (${TIMESTAMP})"
 	echo "List of repositories that were not updated due to an error can be found at the end of this log."
 
 	fail=""
 	for ABI in `find pkg.freebsd.org -type d -name "*:$1:*" -depth 1`; do
 		if ! zfs get -H name "${WWWROOT}/${ABI}" >/dev/null 2>&1; then
-			echo zfs create "${WWWROOT}/${ABI}"
+			zfs create "${WWWROOT}/${ABI}"
 		fi
 		for REPO in `find ${ABI} -type d -depth 1`; do
 			echo -e "=====================================\n\n"
 			echo "Updating ${REPO}"
 			if ! sh ./update_mirror.sh ${REPO}; then
+				echo "Update failed for ${REPO}"
 				fail="${fail} ${REPO}"
 				continue;
 			fi
@@ -49,6 +55,19 @@ mirror_releng()
 				zfs destroy "${CLONE_NAME}"
 			fi
 			zfs clone -o 'readonly=on' "${SNAP_NAME}" "${CLONE_NAME}"
+			for oldsnap in `zfs list -H -o name -t snap -r ${ZFSROOT}/${REPO}`; do
+				if [ "X${oldsnap}" = "X${SNAP_NAME}" ]; then continue; fi
+				SNAP_CREATED=$(zfs get -Hp creation -o value "${oldsnap}")
+				if [ -n "${SNAP_CREATED}" -a $((SNAP_CREATED+(86400))) -gt ${TIMESTAMP} ]; then
+					echo "Keep snapshot ${oldsnap}"
+					continue;
+				fi
+				if zfs destroy "${oldsnap}"; then
+					echo "Destroyed ${oldsnap}"
+				else
+					echo "There was an error destroying ${oldsnap}, please investigate"
+				fi
+			done
 		done
 	done
 	echo -e "=====================================\n\n"
