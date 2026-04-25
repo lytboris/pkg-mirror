@@ -32,35 +32,19 @@ LOGSDST="/${WWWROOT}/pkg.freebsd.org/logs"
 # build base tree
 update_skel()
 {
-	echo "Updating skel with wget"
-	mkdir -p skel || exit 1
-	cd skel || exit 1
+	echo "Updating skel with pymirror"
+	mkdir -p skel/pkg.freebsd.org || exit 1
 
-	wget -o "../$1" \
-		-e robots=off \
-		-R 'FreeBSD*.pkg,*=*,Freebsd*.html' \
-		-r -l inf -E -np \
-		'https://pkg.freebsd.org/'
+	python pymirror.py https://pkg.freebsd.org skel/pkg.freebsd.org
 
-	WGETEXITCODE=$?
-
-	cd .. || exit 1
+	PYMIRROREXITCODE=$?
 
 	printf '=====================================\n\n'
 
-	set -e
-
-	case "${WGETEXITCODE}" in
-		0)
-			;;
-		8)
-			echo "Ignore exit code 8 (Server issued an error response), special thanks to cloudfront issuing a 403"
-			;;
-		*)
-			echo "wget stage failure, exit code ${WGETEXITCODE}, please investigate. Log is saved to ${LOGFILE}"
-			exit "${WGETEXITCODE}"
-			;;
-	esac
+	if [ ${PYMIRROREXITCODE} -ne 0 ]; then
+		echo "Mirror stage failure, exit code ${PYMIRROREXITCODE}, please investigate."
+		exit "${PYMIRROREXITCODE}";
+	fi
 
 	tar -C skel -cf - . | tar -xpf -
 }
@@ -79,6 +63,10 @@ mirror_releng()
 			zfs create "${WWWROOT}/${ABI}"
 		fi
 
+		if [ -r "${ABI}/index.html" ]; then
+			echo "Copy ${ABI}/index.html into /${WWWROOT}/${ABI}"
+			cp "${ABI}/index.html" "/${WWWROOT}/${ABI}/index.html"
+		fi
 		for REPO in `find "${ABI}" -type d -depth 1`; do
 			printf '=====================================\n\n'
 			echo "Updating ${REPO}"
@@ -109,8 +97,7 @@ mirror_releng()
 
 				SNAP_CREATED=`zfs get -Hp creation -o value "${oldsnap}"`
 
-				if [ -n "${SNAP_CREATED}" ] &&
-				   [ `expr "${SNAP_CREATED}" + 86400` -gt "${TIMESTAMP}" ]; then
+				if [ -n "${SNAP_CREATED}" -a $((SNAP_CREATED + 7*86400)) -gt "${TIMESTAMP}" ]; then
 					echo "Keep snapshot ${oldsnap}"
 					continue
 				fi
@@ -139,7 +126,6 @@ mirror_releng()
 TIMESTAMP=`date -j '+%s'`
 DATETIME=`date`
 LOGFILE="logs/batch.txt"
-WGETLOGFILE="logs/wget-repo-mirror.txt"
 
 while [ $# -gt 0 ]; do
 	case "$1" in
@@ -176,15 +162,14 @@ while [ $# -gt 0 ]; do
 done
 
 mkdir -p logs || exit 1
-exec >"${LOGFILE}" 2>&1
 
 if [ "${DO_WGET}" -eq 1 ]; then
-	update_skel "${WGETLOGFILE}"
-	cp "${WGETLOGFILE}" "${LOGSDST}"
+	exec >"${LOGFILE}" 2>&1
+	update_skel
+	cp "${LOGFILE}" "${LOGSDST}"
 fi
 
 if [ "${WGET_ONLY}" -eq 1 ]; then
-	cp "${LOGFILE}" "${LOGSDST}"
 	exit 0;
 fi
 

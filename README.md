@@ -5,7 +5,7 @@ Alpha-quality code, use it on your own risk! (PRs are welcome, though).
 
 To run these skripts, one should
 * have some spare disk space on a ZFS pool
-* install wget (ftp/wget) to mirror metadata of repositories
+* install py311-requests to mirror metadata of repositories
 * install a web server for distibuting packages if needed
 
 ## update_mirror.sh
