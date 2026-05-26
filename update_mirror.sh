@@ -34,16 +34,24 @@ echo "${REPOURL}: storing packages into ${REPOLOCALROOT}"
 
 # check if we are running on a separate zfs filesystems
 if ! zfs get -H mountpoint "${ZFSROOT}/${ABI}" >/dev/null; then
-	mv "/${ZFSROOT}/${ABI}" "/${ZFSROOT}/${ABI}.tmp"
-	zfs create "${ZFSROOT}/${ABI}"
-	tar -C "/${ZFSROOT}/${ABI}.tmp" -cf - . | tar -C "/${ZFSROOT}/${ABI}" -xpf - 
-	rm -r "/${ZFSROOT}/${ABI}.tmp"
+	if [ -d "/${ZFSROOT}/${ABI}" ]; then
+		mv "/${ZFSROOT}/${ABI}" "/${ZFSROOT}/${ABI}.tmp"
+		zfs create "${ZFSROOT}/${ABI}"
+		tar -C "/${ZFSROOT}/${ABI}.tmp" -cf - . | tar -C "/${ZFSROOT}/${ABI}" -xpf -
+		rm -r "/${ZFSROOT}/${ABI}.tmp"
+	else
+		zfs create "${ZFSROOT}/${ABI}"
+	fi
 fi
 if ! zfs get -H mountpoint "${ZFSROOT}/${ABI}/${REPO}" >/dev/null; then
-	mv "/${ZFSROOT}/${ABI}/${REPO}" "/${ZFSROOT}/${ABI}/${REPO}.tmp"
-	zfs create "${ZFSROOT}/${ABI}/${REPO}"
-	tar -C "/${ZFSROOT}/${ABI}/${REPO}.tmp" -cf - . | tar -C "/${ZFSROOT}/${ABI}/${REPO}" -xpf - 
-	rm -r "/${ZFSROOT}/${ABI}/${REPO}.tmp"
+	if [ -d "/${ZFSROOT}/${ABI}/${REPO}" ]; then
+		mv "/${ZFSROOT}/${ABI}/${REPO}" "/${ZFSROOT}/${ABI}/${REPO}.tmp"
+		zfs create "${ZFSROOT}/${ABI}/${REPO}"
+		tar -C "/${ZFSROOT}/${ABI}/${REPO}.tmp" -cf - . | tar -C "/${ZFSROOT}/${ABI}/${REPO}" -xpf -
+		rm -r "/${ZFSROOT}/${ABI}/${REPO}.tmp"
+	else
+		zfs create "${ZFSROOT}/${ABI}/${REPO}"
+	fi
 fi
 
 export REPOS_DIR="/${ZFSROOT}/../.repocfg/${REPOURL}"

@@ -306,7 +306,7 @@ class Mirror:
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Mirror a website's directory structure locally.",
-        epilog="Example: python pymirror.py https://pkg.freebsd.org ./mirror",
+        epilog="Example: python3 pymirror.py https://pkg.freebsd.org ./mirror",
     )
     parser.add_argument("url", help="Base URL to mirror")
     parser.add_argument("output_dir", help="Local directory to save files")
