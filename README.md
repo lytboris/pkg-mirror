@@ -3,25 +3,79 @@ for FreeBSD.
 
 Alpha-quality code, use it on your own risk! (PRs are welcome, though).
 
-To run these skripts, one should
-* have some spare disk space on a ZFS pool
-* install py311-requests to mirror metadata of repositories
-* install a web server for distibuting packages if needed
+## Dependencies
 
-## update_mirror.sh
-Scripts updates a single repository. To do that, metadata for a reposiory
-should be present.
+* ZFS pool with sufficient free space (see [Space requirements](#space-requirements))
+* `pkg` — FreeBSD package manager (used for fetching and querying)
+* `sqlite3` — for patching the pkg database between sync phases
+* `screen` — for running per-releng syncs in parallel (used by `batch.sh`)
+* `lockf` — for advisory locking (ships with FreeBSD base)
+* Python 3.11+ with `requests` library:
+  ```sh
+  pkg install py311-requests
+  ```
+* A web server for distributing packages (optional, e.g. nginx or Apache)
 
+## Scripts
 
-## batch.sh
-Scripts scraps
-1) `pkg.freebsd.com` for repositories available
-2) Runs `update_mirror.sh` for each repository created
-3) If `update_mirror.sh` is successful, publishes it using zfs
-snapshot/clone.
+### pymirror.py
 
+Crawls `pkg.freebsd.org` and mirrors the directory skeleton (HTML index pages
+and small metadata files) into a local `skel/` tree. Large `.pkg` files are
+intentionally skipped — they are downloaded later by `update_mirror.sh` via
+`pkg fetch`.
+
+```sh
+python pymirror.py https://pkg.freebsd.org skel/pkg.freebsd.org
+python pymirror.py --debug https://pkg.freebsd.org skel/pkg.freebsd.org
+```
+
+### update_mirror.sh
+
+Updates a single repository. Requires the skeleton metadata to be present
+(populated by `pymirror.py` / `batch.sh --wget-only`).
+
+```sh
+sh ./update_mirror.sh pkg.freebsd.org/FreeBSD:14:amd64/quarterly
+```
+
+### batch.sh
+
+1. Crawls `pkg.freebsd.org` for available repositories (`pymirror.py`)
+2. Runs `update_mirror.sh` for each repository
+3. On success, publishes the result via ZFS snapshot + clone (read-only)
+
+```sh
+# Full run (crawl metadata + sync all releng branches in parallel)
+sh batch.sh
+
+# Crawl metadata only, then exit
+sh batch.sh --wget-only
+
+# Sync packages only (skip metadata crawl)
+sh batch.sh --no-wget
+
+# Sync a specific release branch only
+sh batch.sh 14
+sh batch.sh --no-wget 14
+```
+
+## ZFS layout
+
+The scripts expect the following ZFS dataset layout:
+
+```
+pkgmirror/                         # ZFSROOT pool
+pkgmirror/pkg.freebsd.org/         # per-host datasets
+pkgmirror/pkg.freebsd.org/FreeBSD:14:amd64/quarterly
+pkgmirror/www/                     # public read-only clones (WWWROOT)
+pkgmirror/www/pkg.freebsd.org/FreeBSD:14:amd64/quarterly
+```
+
+Snapshots are kept for 7 days and then destroyed automatically.
 
 ## Space requirements
+
 As of April, 2026:
 ```
 NAME                                               USED

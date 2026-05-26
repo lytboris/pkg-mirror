@@ -35,7 +35,7 @@ update_skel()
 	echo "Updating skel with pymirror"
 	mkdir -p skel/pkg.freebsd.org || exit 1
 
-	python pymirror.py https://pkg.freebsd.org skel/pkg.freebsd.org
+	python3 pymirror.py https://pkg.freebsd.org skel/pkg.freebsd.org
 
 	PYMIRROREXITCODE=$?
 
@@ -52,6 +52,11 @@ update_skel()
 mirror_releng()
 {
 	set -e
+
+	if [ ! -d pkg.freebsd.org ]; then
+		echo "Error: pkg.freebsd.org directory not found. Run without --no-wget first." >&2
+		return 1
+	fi
 
 	echo "Start mirror releng $1 sync @ ${DATETIME} (${TIMESTAMP})"
 	echo "List of repositories that were not updated due to an error can be found at the end of this log."
@@ -97,6 +102,7 @@ mirror_releng()
 
 				SNAP_CREATED=`zfs get -Hp creation -o value "${oldsnap}"`
 
+				# keep if expiry (creation + 7 days) is still in the future
 				if [ -n "${SNAP_CREATED}" -a $((SNAP_CREATED + 7*86400)) -gt "${TIMESTAMP}" ]; then
 					echo "Keep snapshot ${oldsnap}"
 					continue
@@ -113,13 +119,14 @@ mirror_releng()
 
 	printf '=====================================\n\n'
 
+	cp "${LOGFILE}" "${LOGSDST}"
+
 	if [ -n "${fail}" ]; then
 		echo "Failed repos:${fail}"
-	else
-		echo "All good!"
+		return 1
 	fi
 
-	cp "${LOGFILE}" "${LOGSDST}"
+	echo "All good!"
 	return 0
 }
 
@@ -138,6 +145,10 @@ while [ $# -gt 0 ]; do
 			;;
 		--no-wget)
 			DO_WGET=0
+			if [ ${WGET_ONLY} -eq 1 ]; then
+				usage;
+				exit 1;
+			fi
 			;;
 		--help|-h)
 			usage
@@ -162,6 +173,7 @@ while [ $# -gt 0 ]; do
 done
 
 mkdir -p logs || exit 1
+mkdir -p "${LOGSDST}" || exit 1
 
 if [ "${DO_WGET}" -eq 1 ]; then
 	exec >"${LOGFILE}" 2>&1
@@ -178,6 +190,16 @@ if [ -n "${RELENG_ARG}" ]; then
 	exec >"${LOGFILE}" 2>&1
 	mirror_releng "${RELENG_ARG}"
 	exit $?
+fi
+
+if [ ! -d pkg.freebsd.org ]; then
+	echo "Error: pkg.freebsd.org directory not found. Run --wget-only first." >&2
+	exit 1
+fi
+
+# Redirect to log if update_skel did not already do so (--no-wget case)
+if [ "${DO_WGET}" -eq 0 ]; then
+	exec >"${LOGFILE}" 2>&1
 fi
 
 for releng in `find pkg.freebsd.org -type d -depth 1 | cut -f 2 -d: | sort -u`; do
