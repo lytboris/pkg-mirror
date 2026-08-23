@@ -138,7 +138,7 @@ class Mirror:
             if "=" in absolute:
                 continue
 
-            if re.match('^FreeBSD.*\.pkg', link):
+            if re.match(r'^FreeBSD.*\.pkg', link):
                 continue
 
             if not self.is_same_site(absolute):
